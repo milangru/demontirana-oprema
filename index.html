@@ -141,6 +141,7 @@
   .role-badge.editor{color:var(--ok); border-color:var(--ok);}
 
   #app[hidden], #login-screen[hidden]{display:none;}
+  [hidden]{display:none !important;}
 
   header.appbar{
     position:sticky;top:0;z-index:20;
@@ -682,12 +683,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB3h_B6I_4dr_00e1yDU8Gz5RrcOPRN8Sg",
-  authDomain: "demontirana-oprema.firebaseapp.com",
-  projectId: "Tdemontirana-oprema",
-  storageBucket: "Tdemontirana-oprema.firebasestorage.app",
-  messagingSenderId: "789735283062",
-  appId: "1:789735283062:web:3bc226f96310a06e360257"
+  apiKey: "TVOJ_API_KEY",
+  authDomain: "TVOJ_PROJEKAT.firebaseapp.com",
+  projectId: "TVOJ_PROJEKAT",
+  storageBucket: "TVOJ_PROJEKAT.appspot.com",
+  messagingSenderId: "TVOJ_SENDER_ID",
+  appId: "TVOJ_APP_ID"
 };
 
 const fbApp = initializeApp(firebaseConfig);
