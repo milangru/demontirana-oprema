@@ -1238,6 +1238,12 @@ function buildPrintHtml(){
 function printCurrentRecord(){
   if(!record){ showToast("Nema otvorenog zapisnika", true); return; }
   $("print-area").innerHTML = buildPrintHtml();
+  const originalTitle = document.title;
+  const safeLoc = (record.lokacija || "zapisnik").trim().replace(/[\\/:*?"<>|]+/g,"-").replace(/\s+/g,"_") || "zapisnik";
+  const safeDate = record.datum || todayISO();
+  document.title = `${safeLoc}_${safeDate}`;
+  const restoreTitle = ()=>{ document.title = originalTitle; window.removeEventListener("afterprint", restoreTitle); };
+  window.addEventListener("afterprint", restoreTitle);
   window.print();
 }
 $("print-btn").addEventListener("click", printCurrentRecord);
