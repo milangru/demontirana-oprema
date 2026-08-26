@@ -165,8 +165,7 @@
     padding:1px 5px;border-radius:2px;
   }
   header.appbar .user{
-    /*display:flex;align-items:center;gap:12px;*/
-    display:block;
+    display:flex;align-items:center;gap:12px;
     font-size:12.5px;color:#C9C4B7;
   }
   header.appbar .user button{
@@ -174,6 +173,16 @@
     border-radius:var(--radius);padding:6px 10px;font-size:12px;
   }
   header.appbar .user button:hover{border-color:#C9C4B7;color:#fff;}
+
+  @media(max-width:560px){
+    header.appbar{
+      height:auto;min-height:56px;flex-wrap:wrap;
+      padding:10px 14px;row-gap:8px;
+    }
+    header.appbar .user{
+      width:100%;justify-content:flex-end;flex-wrap:wrap;gap:8px;
+    }
+  }
 
   main{max-width:920px;margin:0 auto;padding:24px 18px 80px;}
 
