@@ -356,11 +356,10 @@
   /* ---------- Print view ---------- */
   #print-area{display:none;}
   @media print{
-    body *{visibility:hidden;}
-    #print-area, #print-area *{visibility:visible;}
+    body > *{display:none !important;}
     #print-area{
-      display:block;position:absolute;top:0;left:0;width:100%;
-      background:#fff;color:#000;
+      display:block !important; position:static; width:auto;
+      background:#fff; color:#000;
     }
     @page{size:A4;margin:14mm 13mm;}
   }
@@ -553,12 +552,12 @@
             <div class="simple-field"><input type="number" id="m-panel-antena" min="0"><span class="unit">kom</span></div>
           </div>
           <div class="item-block">
-            <div class="item-label"><span class="num">5.</span> Radio modul</div>
-            <div class="simple-field"><input type="number" id="m-radio-modul" min="0"><span class="unit">kom</span></div>
+            <div class="item-label"><span class="num">5.</span> Radio modul <span style="font-weight:400;text-transform:none;">(naziv / količina)</span></div>
+            <div id="m-radio-modul"></div>
           </div>
           <div class="item-block">
-            <div class="item-label"><span class="num">6.</span> AIR3255</div>
-            <div class="simple-field"><input type="number" id="m-air3255" min="0"><span class="unit">kom</span></div>
+            <div class="item-label"><span class="num">6.</span> AIR3255 <span style="font-weight:400;text-transform:none;">(naziv / količina)</span></div>
+            <div id="m-air3255"></div>
           </div>
 
           <div class="divider"></div>
@@ -752,7 +751,7 @@ function emptyRecord(){
     },
     montirano: {
       kabinet: [], baterije: [], izmestanje: "",
-      panelAntena: "", radioModul: "", air3255: "",
+      panelAntena: "", radioModul: [], air3255: [],
       sektori: [ emptySektor(1) ],
       jumperi3m: "", jumper5m: "", celik: [],
       instalacioni: {
@@ -934,8 +933,8 @@ function loadFormFromRecord(){
   $("m-izmestanje").disabled = !canEdit;
   $("m-izmestanje").oninput = (e)=>{ m.izmestanje = e.target.value; isDirty = true; updateSaveStatus(); };
   bindSimpleField("m-panel-antena", m, "panelAntena");
-  bindSimpleField("m-radio-modul", m, "radioModul");
-  bindSimpleField("m-air3255", m, "air3255");
+  mountGroup("m-radio-modul", m.radioModul, [{key:"naziv",label:"Naziv",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
+  mountGroup("m-air3255", m.air3255, [{key:"naziv",label:"Naziv",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
 
   renderSektori();
 
@@ -1200,8 +1199,8 @@ function buildPrintHtml(){
     <div class="pv-item"><div class="pv-item-label">2. Baterije</div>${rowsOrEmpty(m.baterije, (a)=>`<tr><td>${escapeHtml(a.tip||"")}</td><td class="mono" style="width:70px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`)}</div>
     <div class="pv-item"><div class="pv-item-label">3. Izmeštanje iz starog kabineta</div><div class="pv-note">${escapeHtml(m.izmestanje||"—")}</div></div>
     ${pvSimple("4. Panel antena", m.panelAntena, "kom")}
-    ${pvSimple("5. Radio modul", m.radioModul, "kom")}
-    ${pvSimple("6. AIR3255", m.air3255, "kom")}
+    <div class="pv-item"><div class="pv-item-label">5. Radio modul</div>${rowsOrEmpty(m.radioModul, twoColRow)}</div>
+    <div class="pv-item"><div class="pv-item-label">6. AIR3255</div>${rowsOrEmpty(m.air3255, twoColRow)}</div>
 
     <div class="pv-item"><div class="pv-item-label">Kablovska infrastruktura po sektorima</div>${sektoriHtml || '<div class="pv-empty">— nema sektora —</div>'}</div>
 
