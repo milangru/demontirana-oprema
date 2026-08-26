@@ -373,7 +373,7 @@
     }
     @page{size:A4;margin:14mm 13mm;}
   }
-  .pv-page{font-family:var(--font-body);color:#000;font-size:11.5px;line-height:1.4;}
+  .pv-page{font-family:var(--font-body);color:#000;font-size:11.5px;line-height:1.4;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
   .pv-title{font-size:17px;font-weight:700;margin-bottom:2px;}
   .pv-subtitle{font-size:11px;color:#555;font-family:var(--font-mono);margin-bottom:14px;}
   .pv-basic{display:flex;gap:24px;border:1px solid #999;padding:9px 12px;margin-bottom:16px;font-size:12px;}
@@ -383,17 +383,18 @@
     border-bottom:1.5px solid #000;padding-bottom:3px;margin:18px 0 10px;
   }
   .pv-section-title.mont{margin-top:24px;}
-  .pv-item{margin-bottom:8px;break-inside:avoid;}
   .pv-item-label{font-weight:600;font-size:11px;margin-bottom:3px;}
-  .pv-table{width:auto;min-width:55%;border-collapse:collapse;font-size:11px;}
-  .pv-table td{border:1px solid #ccc;padding:3px 6px;}
-  .pv-table td:first-child{max-width:260px;}
+  .pv-table{width:64%;min-width:280px;table-layout:fixed;border-collapse:collapse;font-size:11px;}
+  .pv-table td{border:1px solid #ddd;padding:4px 8px;word-wrap:break-word;}
+  .pv-table tr.pv-alt td{background:#f0f0eb;}
+  .pv-item{margin-bottom:8px;break-inside:avoid;}
+  .pv-simple-row.pv-alt{background:#f0f0eb;}
   .pv-empty{color:#888;font-style:italic;font-size:10.5px;}
   .pv-note{border:1px solid #ccc;padding:6px 8px;font-size:11px;white-space:pre-wrap;min-height:30px;}
   .pv-sektor{border:1px solid #999;padding:8px 10px;margin-bottom:8px;break-inside:avoid;}
   .pv-sektor h4{font-size:11.5px;margin:0 0 5px;}
   .pv-sektor .pv-sub{font-family:var(--font-mono);font-size:9.5px;color:#555;text-transform:uppercase;margin:5px 0 2px;}
-  .pv-simple-row{display:flex;justify-content:space-between;font-size:11px;border-bottom:1px dotted #ccc;padding:2px 0;}
+  .pv-simple-row{display:flex;justify-content:space-between;gap:14px;width:64%;min-width:280px;font-size:11px;border-bottom:1px dotted #ccc;padding:3px 2px;}
   .pv-signatures{display:flex;justify-content:space-between;margin-top:40px;}
   .pv-sig{width:42%;text-align:center;font-size:10.5px;color:#333;}
   .pv-sig .line{border-top:1px solid #000;margin-top:34px;padding-top:4px;}
@@ -1249,6 +1250,9 @@ function buildPrintHtml(){
 function printCurrentRecord(){
   if(!record){ showToast("Nema otvorenog zapisnika", true); return; }
   $("print-area").innerHTML = buildPrintHtml();
+  $("print-area").querySelectorAll(".pv-table tr, .pv-simple-row").forEach((el, i)=>{
+    if(i % 2 === 1) el.classList.add("pv-alt");
+  });
   const originalTitle = document.title;
   const safeLoc = (record.lokacija || "zapisnik").trim().replace(/[\\/:*?"<>|]+/g,"-").replace(/\s+/g,"_") || "zapisnik";
   const safeDate = record.datum || todayISO();
