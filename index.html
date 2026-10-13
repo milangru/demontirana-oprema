@@ -1356,7 +1356,8 @@ $("forgot-pass-link").addEventListener("click", async (e)=>{
     msgEl.textContent = "Poslat je link za reset lozinke na " + email + ". Proveri inbox (i spam).";
     msgEl.style.display = "block";
   }catch(err){
-    errEl.textContent = "Ne mogu da pošaljem link za reset. Proveri da li je email tačan.";
+    console.error("Reset lozinke - greška:", err);
+    errEl.textContent = "Ne mogu da pošaljem link za reset (" + (err.code || err.message || "nepoznata greška") + ").";
   }
 });
 
