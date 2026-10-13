@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zapisnik izvedenih radova</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2218%22 fill=%22%231b231f%22/><text x=%2250%22 y=%2266%22 font-family=%22monospace%22 font-size=%2244%22 font-weight=%22700%22 fill=%22%23eef1ec%22 text-anchor=%22middle%22>ZR</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -394,6 +393,8 @@
   .pv-note{border:1px solid #ccc;padding:6px 8px;font-size:11px;white-space:pre-wrap;min-height:30px;}
   .pv-sektor{border:1px solid #999;padding:8px 10px;margin-bottom:8px;break-inside:avoid;}
   .pv-sektor h4{font-size:11.5px;margin:0 0 5px;}
+  .pv-sektor.pv-sektor-total{border:2px solid #1b231f;background:#f7f7f4;}
+  .pv-sektor.pv-sektor-total h4{text-transform:uppercase;letter-spacing:0.03em;}
   .pv-sektor .pv-sub{font-family:var(--font-mono);font-size:9.5px;color:#555;text-transform:uppercase;margin:5px 0 2px;}
   .pv-simple-row{display:flex;justify-content:space-between;gap:14px;width:64%;min-width:280px;font-size:11px;border-bottom:1px dotted #ccc;padding:3px 2px;}
   .pv-signatures{display:flex;justify-content:space-between;margin-top:40px;}
@@ -699,12 +700,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB3h_B6I_4dr_00e1yDU8Gz5RrcOPRN8Sg",
-  authDomain: "demontirana-oprema.firebaseapp.com",
-  projectId: "demontirana-oprema",
-  storageBucket: "demontirana-oprema.firebasestorage.app",
-  messagingSenderId: "789735283062",
-  appId: "1:789735283062:web:3bc226f96310a06e360257"
+  apiKey: "TVOJ_API_KEY",
+  authDomain: "TVOJ_PROJEKAT.firebaseapp.com",
+  projectId: "TVOJ_PROJEKAT",
+  storageBucket: "TVOJ_PROJEKAT.appspot.com",
+  messagingSenderId: "TVOJ_SENDER_ID",
+  appId: "TVOJ_APP_ID"
 };
 
 const fbApp = initializeApp(firebaseConfig);
@@ -1154,7 +1155,8 @@ $("save-btn-bottom").addEventListener("click", saveRecord);
 
 $("delete-btn").addEventListener("click", async ()=>{
   if(!currentRecordId) return;
-  const ok = await confirmDialog("Obriši zapisnik?", "Ova radnja se ne može poništiti.");
+  const naziv = record.lokacija ? `„${record.lokacija}"` : "ovaj zapisnik";
+  const ok = await confirmDialog("Obriši zapisnik?", `Trajno brišeš zapisnik za lokaciju ${naziv}. Ova radnja se ne može poništiti.`);
   if(!ok) return;
   try{
     await deleteDoc(doc(db, COLLECTION, currentRecordId));
@@ -1172,7 +1174,49 @@ function rowsOrEmpty(list, renderRow){
   return '<table class="pv-table"><tbody>' + list.map(renderRow).join("") + '</tbody></table>';
 }
 function pvSimple(label, value, unit){
-  return `<div class="pv-simple-row"><span>${escapeHtml(label)}</span><span class="mono">${escapeHtml(String(value||"0"))} ${unit||""}</span></div>`;
+  if(value === "" || value === null || typeof value === "undefined") return "";
+  return `<div class="pv-simple-row"><span>${escapeHtml(label)}</span><span class="mono">${escapeHtml(String(value))} ${unit||""}</span></div>`;
+}
+function pvItem(label, list, rowFn){
+  if(!list || list.length === 0) return "";
+  return `<div class="pv-item"><div class="pv-item-label">${escapeHtml(label)}</div>${rowsOrEmpty(list, rowFn)}</div>`;
+}
+function pvNote(label, value){
+  if(!value) return "";
+  return `<div class="pv-item"><div class="pv-item-label">${escapeHtml(label)}</div><div class="pv-note">${escapeHtml(value)}</div></div>`;
+}
+function pvGroup(label, innerHtml){
+  if(!innerHtml || !innerHtml.trim()) return "";
+  return `<div class="pv-item"><div class="pv-item-label">${escapeHtml(label)}</div>${innerHtml}</div>`;
+}
+function computeSektorTotals(sektori){
+  const groups = {kabal10:{}, kabal16:{}, optika:{}};
+  const grand = {kabal10:0, kabal16:0, optika:0};
+  (sektori||[]).forEach(s=>{
+    ["kabal10","kabal16","optika"].forEach(key=>{
+      (s[key]||[]).forEach(item=>{
+        const name = (item.modul||"").trim() || "—";
+        const qty = parseFloat(item.kolicina) || 0;
+        groups[key][name] = (groups[key][name]||0) + qty;
+        grand[key] += qty;
+      });
+    });
+  });
+  return {groups, grand};
+}
+function sektorTotalsHtml(sektori){
+  if(!sektori || sektori.length < 2) return "";
+  const {groups, grand} = computeSektorTotals(sektori);
+  const labelMap = {kabal10:"Kabal 2x10mm", kabal16:"Kabal 2x16mm", optika:"Optika"};
+  let out = "";
+  ["kabal10","kabal16","optika"].forEach(key=>{
+    const entries = Object.entries(groups[key]);
+    if(entries.length === 0) return;
+    const rows = entries.map(([name,sum])=>`<tr><td>${escapeHtml(name)}</td><td class="mono" style="width:60px;">${sum}</td></tr>`).join("");
+    out += `<div class="pv-sub">${labelMap[key]} — ukupno: <span class="mono">${grand[key]}</span></div><table class="pv-table"><tbody>${rows}</tbody></table>`;
+  });
+  if(!out) return "";
+  return `<div class="pv-sektor pv-sektor-total"><h4>UKUPNO (svi sektori)</h4>${out}</div>`;
 }
 
 function buildPrintHtml(){
@@ -1185,14 +1229,32 @@ function buildPrintHtml(){
   const customRow = (a) => `<tr><td>${escapeHtml(a.naziv||"")}</td><td class="mono" style="width:110px;">${escapeHtml(a.vrednost||"")}</td></tr>`;
 
   const sektoriHtml = (m.sektori||[]).map(s=>{
-    const subHtml = (list, label) => `<div class="pv-sub">${label}</div>` + rowsOrEmpty(list, a=>`<tr><td>${escapeHtml(a.modul||"")}</td><td class="mono" style="width:60px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`);
+    const subHtml = (list, label) => {
+      if(!list || list.length === 0) return "";
+      return `<div class="pv-sub">${label}</div>` + rowsOrEmpty(list, a=>`<tr><td>${escapeHtml(a.modul||"")}</td><td class="mono" style="width:60px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`);
+    };
+    const body = subHtml(s.kabal10, "Kabal 2x10mm") + subHtml(s.kabal16, "Kabal 2x16mm") + subHtml(s.optika, "Optika");
+    if(!body) return "";
     return `<div class="pv-sektor">
       <h4>${escapeHtml(s.naziv||"")}</h4>
-      ${subHtml(s.kabal10, "Kabal 2x10mm")}
-      ${subHtml(s.kabal16, "Kabal 2x16mm")}
-      ${subHtml(s.optika, "Optika")}
+      ${body}
     </div>`;
-  }).join("");
+  }).join("") + sektorTotalsHtml(m.sektori);
+
+  const jumperiCelikInner = pvSimple("Jumperi 3m", m.jumperi3m, "kom") + pvSimple("Jumper 5m", m.jumper5m, "kom") + (m.celik && m.celik.length ? rowsOrEmpty(m.celik, twoColRow) : "");
+
+  const instInner = pvSimple("Kabal 5x6mm²", inst.kabal5x6, "m")
+    + pvSimple("Uzemljenje 35mm²", inst.uzemljenje35, "m")
+    + pvSimple("Uzemljenje 16mm²", inst.uzemljenje16, "m")
+    + pvSimple("Crevo fi20", inst.crevoFi20, "m")
+    + pvSimple("Crevo fi25", inst.crevoFi25, "m")
+    + pvSimple("Osigurač B20A", inst.osiguracB20A, "kom")
+    + ( inst.dodatniOsiguraci && inst.dodatniOsiguraci.length ? `<div class="pv-sub">Dodatni osigurači</div>${rowsOrEmpty(inst.dodatniOsiguraci, threeColRow)}` : "" )
+    + pvSimple("Vezice", inst.vezice, "kom")
+    + ( inst.papucice && inst.papucice.length ? `<div class="pv-sub">Papučice</div>${rowsOrEmpty(inst.papucice, twoColRow)}` : "" )
+    + ( inst.hilzne && inst.hilzne.length ? `<div class="pv-sub">Hilzne</div>${rowsOrEmpty(inst.hilzne, twoColRow)}` : "" )
+    + ( inst.srafovi && inst.srafovi.length ? `<div class="pv-sub">Šrafovi</div>${rowsOrEmpty(inst.srafovi, twoColRow)}` : "" )
+    + ( inst.custom && inst.custom.length ? `<div class="pv-sub">Dodatne stavke</div>${rowsOrEmpty(inst.custom, customRow)}` : "" );
 
   return `
   <div class="pv-page">
@@ -1205,52 +1267,32 @@ function buildPrintHtml(){
     </div>
 
     <div class="pv-section-title">Demontirano</div>
-    <div class="pv-item"><div class="pv-item-label">1. Kabinet</div>${rowsOrEmpty(d.kabinet, twoColRow)}</div>
-    <div class="pv-item"><div class="pv-item-label">2. Baterije</div>${rowsOrEmpty(d.baterije, twoColRow)}</div>
-    <div class="pv-item"><div class="pv-item-label">3. Panel antena</div>${rowsOrEmpty(d.panelAntena, twoColRow)}</div>
-    <div class="pv-item"><div class="pv-item-label">4. Radio modul</div>${rowsOrEmpty(d.radioModul, twoColRow)}</div>
-    <div class="pv-item"><div class="pv-item-label">5. Spliter, kombajner i sl.</div>${rowsOrEmpty(d.spliter, twoColRow)}</div>
+    ${pvItem("1. Kabinet", d.kabinet, twoColRow)}
+    ${pvItem("2. Baterije", d.baterije, twoColRow)}
+    ${pvItem("3. Panel antena", d.panelAntena, twoColRow)}
+    ${pvItem("4. Radio modul", d.radioModul, twoColRow)}
+    ${pvItem("5. Spliter, kombajner i sl.", d.spliter, twoColRow)}
     ${pvSimple("6. RET motor", d.retMotor, "kom")}
     ${pvSimple("7. RET kabal", d.retKabal, "kom")}
     ${pvSimple("8. Odspajanje mekih kablova / jumpera", d.odspajanje, "kom")}
-    <div class="pv-item"><div class="pv-item-label">9. Demontaža jumpera</div>${rowsOrEmpty(d.jumperi, twoColRow)}</div>
-    <div class="pv-item"><div class="pv-item-label">10. Demontaža DC kabla</div>${rowsOrEmpty(d.dcKabl, twoColRow)}</div>
-    <div class="pv-item"><div class="pv-item-label">11. Osigurači (vrsta / amperaža / količina)</div>${rowsOrEmpty(d.osiguraci, threeColRow)}</div>
-    ${ d.custom && d.custom.length ? `<div class="pv-item"><div class="pv-item-label">Dodatne stavke</div>${rowsOrEmpty(d.custom, customRow)}</div>` : "" }
-    <div class="pv-item"><div class="pv-item-label">12. Napomene</div><div class="pv-note">${escapeHtml(d.napomene||"—")}</div></div>
+    ${pvItem("9. Demontaža jumpera", d.jumperi, twoColRow)}
+    ${pvItem("10. Demontaža DC kabla", d.dcKabl, twoColRow)}
+    ${pvItem("11. Osigurači (vrsta / amperaža / količina)", d.osiguraci, threeColRow)}
+    ${pvItem("Dodatne stavke", d.custom, customRow)}
+    ${pvNote("12. Napomene", d.napomene)}
 
     <div class="pv-section-title mont">Montirano</div>
-    <div class="pv-item"><div class="pv-item-label">1. Kabinet</div>${rowsOrEmpty(m.kabinet, twoColRow)}</div>
-    <div class="pv-item"><div class="pv-item-label">2. Baterije</div>${rowsOrEmpty(m.baterije, (a)=>`<tr><td>${escapeHtml(a.tip||"")}</td><td class="mono" style="width:70px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`)}</div>
-    <div class="pv-item"><div class="pv-item-label">3. Izmeštanje iz starog kabineta</div><div class="pv-note">${escapeHtml(m.izmestanje||"—")}</div></div>
+    ${pvItem("1. Kabinet", m.kabinet, twoColRow)}
+    ${pvItem("2. Baterije", m.baterije, (a)=>`<tr><td>${escapeHtml(a.tip||"")}</td><td class="mono" style="width:70px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`)}
+    ${pvNote("3. Izmeštanje iz starog kabineta", m.izmestanje)}
     ${pvSimple("4. Panel antena", m.panelAntena, "kom")}
-    <div class="pv-item"><div class="pv-item-label">5. Radio modul</div>${rowsOrEmpty(m.radioModul, twoColRow)}</div>
-    <div class="pv-item"><div class="pv-item-label">6. AIR3255</div>${rowsOrEmpty(m.air3255, twoColRow)}</div>
+    ${pvItem("5. Radio modul", m.radioModul, twoColRow)}
+    ${pvItem("6. AIR3255", m.air3255, twoColRow)}
 
-    <div class="pv-item"><div class="pv-item-label">Kablovska infrastruktura po sektorima</div>${sektoriHtml || '<div class="pv-empty">— nema sektora —</div>'}</div>
-
-    <div class="pv-item"><div class="pv-item-label">Jumperi i čelik</div>
-      ${pvSimple("Jumperi 3m", m.jumperi3m, "kom")}
-      ${pvSimple("Jumper 5m", m.jumper5m, "kom")}
-      ${rowsOrEmpty(m.celik, twoColRow)}
-    </div>
-
-    <div class="pv-item"><div class="pv-item-label">Instalacioni materijal</div>
-      ${pvSimple("Kabal 5x6mm²", inst.kabal5x6, "m")}
-      ${pvSimple("Uzemljenje 35mm²", inst.uzemljenje35, "m")}
-      ${pvSimple("Uzemljenje 16mm²", inst.uzemljenje16, "m")}
-      ${pvSimple("Crevo fi20", inst.crevoFi20, "m")}
-      ${pvSimple("Crevo fi25", inst.crevoFi25, "m")}
-      ${pvSimple("Osigurač B20A", inst.osiguracB20A, "kom")}
-      ${ inst.dodatniOsiguraci && inst.dodatniOsiguraci.length ? `<div class="pv-sub">Dodatni osigurači</div>${rowsOrEmpty(inst.dodatniOsiguraci, threeColRow)}` : "" }
-      ${pvSimple("Vezice", inst.vezice, "kom")}
-      ${ inst.papucice && inst.papucice.length ? `<div class="pv-sub">Papučice</div>${rowsOrEmpty(inst.papucice, twoColRow)}` : "" }
-      ${ inst.hilzne && inst.hilzne.length ? `<div class="pv-sub">Hilzne</div>${rowsOrEmpty(inst.hilzne, twoColRow)}` : "" }
-      ${ inst.srafovi && inst.srafovi.length ? `<div class="pv-sub">Šrafovi</div>${rowsOrEmpty(inst.srafovi, twoColRow)}` : "" }
-      ${ inst.custom && inst.custom.length ? `<div class="pv-sub">Dodatne stavke</div>${rowsOrEmpty(inst.custom, customRow)}` : "" }
-    </div>
-
-    <div class="pv-item"><div class="pv-item-label">Napomena (dodaci u montaži i zapažanja)</div><div class="pv-note">${escapeHtml(m.napomena||"—")}</div></div>
+    ${pvGroup("Kablovska infrastruktura po sektorima", sektoriHtml)}
+    ${pvGroup("Jumperi i čelik", jumperiCelikInner)}
+    ${pvGroup("Instalacioni materijal", instInner)}
+    ${pvNote("Napomena (dodaci u montaži i zapažanja)", m.napomena)}
 
     <div class="pv-signatures">
       <div class="pv-sig"><div class="line">Izvođač radova</div></div>
