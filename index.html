@@ -241,6 +241,9 @@
   .form-header{
     display:flex;align-items:center;justify-content:space-between;
     margin-bottom:18px;gap:10px;flex-wrap:wrap;
+    position:sticky;top:var(--appbar-h,56px);z-index:15;
+    background:var(--paper);padding:10px 0;
+    border-bottom:1px solid var(--line);
   }
   .form-header .back-link{
     display:flex;align-items:center;gap:6px;
@@ -333,6 +336,9 @@
   }
   .sektor-sub-label{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.03em;}
   .add-sektor-btn{margin-top:2px;}
+  .sektor-sum{font-family:var(--font-mono);font-size:11.5px;font-weight:400;text-align:right;margin-top:6px;color:var(--ink-soft);opacity:.75;}
+  .sektor-grand{background:var(--accent-tint);}
+  .sektor-sum-row{display:flex;justify-content:space-between;max-width:360px;font-size:16px;font-weight:700;padding:3px 0;border-bottom:1px dotted var(--line-strong);}
 
   .subgroup-title{font-weight:600;font-size:13.5px;margin:16px 0 8px;color:var(--ink-soft);}
   .subgroup-title:first-child{margin-top:0;}
@@ -400,6 +406,15 @@
   .pv-signatures{display:flex;justify-content:space-between;margin-top:40px;}
   .pv-sig{width:42%;text-align:center;font-size:10.5px;color:#333;}
   .pv-sig .line{border-top:1px solid #000;margin-top:34px;padding-top:4px;}
+  .pv-sum{font-size:10px;font-weight:400;color:#888;margin:3px 0 4px;}
+  .pv-sektor:not(.pv-sektor-total) h4,.pv-sektor:not(.pv-sektor-total) .pv-table{color:#777;}
+  .pv-sektor:not(.pv-sektor-total) .pv-table td{border-color:#e6e6e6;}
+  .pv-sektor:not(.pv-sektor-total) .pv-sub{color:#aaa;}
+  .pv-sektor-total .pv-sub.pv-grand-sub{font-family:var(--font-body);font-size:12.5px;font-weight:700;color:#000;text-transform:none;margin:10px 0 4px;}
+  .pv-grand-val{font-family:var(--font-mono);font-size:14px;font-weight:700;background:#000;color:#fff;padding:1px 8px;border-radius:2px;}
+  .pv-sektor-total .pv-table{color:#8a8a8a;font-weight:400;}
+  .pv-sektor-total .pv-table td{border-color:#ececec;}
+  .pv-sektor-total .pv-table tr.pv-alt td{background:#f8f8f5;}
   .pv-footer{margin-top:26px;font-size:9px;color:#999;text-align:right;font-family:var(--font-mono);}
 </style>
 </head>
@@ -533,15 +548,19 @@
             <div id="d-dc-kabl"></div>
           </div>
           <div class="item-block">
-            <div class="item-label"><span class="num">11.</span> Osigurači <span style="font-weight:400;text-transform:none;">(vrsta / amperaža / količina)</span></div>
+            <div class="item-label"><span class="num">11.</span> Osigurači <span style="font-weight:400;text-transform:none;">(vrsta / količina)</span></div>
             <div id="d-osiguraci"></div>
+          </div>
+          <div class="item-block">
+            <div class="item-label"><span class="num">12.</span> BaseBand (BBU) <span style="font-weight:400;text-transform:none;">(tip / količina)</span></div>
+            <div id="d-bbu"></div>
           </div>
           <div class="item-block">
             <div class="item-label"><span class="num">•</span> Dodatne stavke</div>
             <div id="d-custom"></div>
           </div>
           <div class="item-block">
-            <div class="item-label"><span class="num">12.</span> Napomene</div>
+            <div class="item-label"><span class="num">13.</span> Napomene</div>
             <textarea class="napomena" id="d-napomene" placeholder="Napomene o demontaži..."></textarea>
           </div>
 
@@ -566,8 +585,8 @@
             <textarea class="napomena" id="m-izmestanje" placeholder="Opis izmeštanja..." style="min-height:60px;"></textarea>
           </div>
           <div class="item-block">
-            <div class="item-label"><span class="num">4.</span> Panel antena</div>
-            <div class="simple-field"><input type="number" id="m-panel-antena" min="0"><span class="unit">kom</span></div>
+            <div class="item-label"><span class="num">4.</span> Panel antena <span style="font-weight:400;text-transform:none;">(vrsta / količina)</span></div>
+            <div id="m-panel-antena"></div>
           </div>
           <div class="item-block">
             <div class="item-label"><span class="num">5.</span> Radio modul <span style="font-weight:400;text-transform:none;">(naziv / količina)</span></div>
@@ -765,11 +784,11 @@ function emptyRecord(){
     demontirano: {
       kabinet: [], baterije: [], panelAntena: [], radioModul: [], spliter: [],
       retMotor: "", retKabal: "", odspajanje: "",
-      jumperi: [], dcKabl: [], osiguraci: [], custom: [], napomene: ""
+      jumperi: [], dcKabl: [], osiguraci: [], bbu: [], custom: [], napomene: ""
     },
     montirano: {
       kabinet: [], baterije: [], izmestanje: "",
-      panelAntena: "", radioModul: [], air3255: [],
+      panelAntena: [], radioModul: [], air3255: [],
       sektori: [ emptySektor(1) ],
       jumperi3m: "", jumper5m: "", celik: [],
       instalacioni: {
@@ -792,7 +811,8 @@ let currentRecordId = null; // null = novi zapisnik
 let isDirty = false;
 
 /* ================= REPEATABLE GROUP RENDERER ================= */
-function createGroup(list, fieldDefs, addLabel){
+function createGroup(list, fieldDefs, addLabel, onChange){
+  const notify = ()=>{ if(onChange) onChange(); };
   const wrap = document.createElement("div");
   const rowsEl = document.createElement("div");
   rowsEl.className = "group-rows";
@@ -813,7 +833,7 @@ function createGroup(list, fieldDefs, addLabel){
         inp.placeholder = fd.label;
         inp.value = row[fd.key] || "";
         inp.disabled = !canEdit;
-        inp.addEventListener("input", (e)=>{ row[fd.key] = e.target.value; isDirty = true; updateSaveStatus(); });
+        inp.addEventListener("input", (e)=>{ row[fd.key] = e.target.value; isDirty = true; updateSaveStatus(); notify(); });
         rowEl.appendChild(inp);
       });
       if(canEdit){
@@ -822,7 +842,7 @@ function createGroup(list, fieldDefs, addLabel){
         rmBtn.className = "btn-icon";
         rmBtn.title = "Ukloni red";
         rmBtn.textContent = "✕";
-        rmBtn.addEventListener("click", ()=>{ list.splice(i,1); renderRows(); isDirty = true; updateSaveStatus(); });
+        rmBtn.addEventListener("click", ()=>{ list.splice(i,1); renderRows(); isDirty = true; updateSaveStatus(); notify(); });
         rowEl.appendChild(rmBtn);
       }
       rowsEl.appendChild(rowEl);
@@ -836,7 +856,7 @@ function createGroup(list, fieldDefs, addLabel){
     addBtn.type = "button";
     addBtn.className = "btn-add";
     addBtn.textContent = addLabel || "+ Dodaj red";
-    addBtn.addEventListener("click", ()=>{ list.push({}); renderRows(); isDirty = true; updateSaveStatus(); });
+    addBtn.addEventListener("click", ()=>{ list.push({}); renderRows(); isDirty = true; updateSaveStatus(); notify(); });
     wrap.appendChild(addBtn);
   }
   return wrap;
@@ -856,11 +876,29 @@ function bindSimpleField(inputId, obj, key){
 }
 
 /* ================= SEKTORI RENDERER ================= */
+const fmt = (n)=> Math.round(n*100)/100;
+const lineTotal = (a)=> (parseFloat(a.duzina)||0) * (parseFloat(a.kolicina)||0);
+const sumList = (list)=> (list||[]).reduce((t,a)=> t + lineTotal(a), 0);
+
 function renderSektori(){
   const container = $("m-sektori");
   container.innerHTML = "";
   $("add-sektor-btn").hidden = !canEdit;
   const sektori = record.montirano.sektori;
+  const keys = [["kabal10","Kabal 2x10mm"],["kabal16","Kabal 2x16mm"],["optika","Optika"]];
+  const sumEls = [];
+  const grandEl = document.createElement("div");
+  grandEl.className = "sektor-card sektor-grand";
+
+  function refreshTotals(){
+    sumEls.forEach(({el,list})=>{ el.textContent = "Ukupno: " + fmt(sumList(list)) + " m"; });
+    grandEl.innerHTML = '<div class="sektor-sub-label" style="margin-top:0">Ukupno (svi sektori)</div>' +
+      keys.map(([k,label])=>{
+        const t = sektori.reduce((acc,sek)=> acc + sumList(sek[k]), 0);
+        return `<div class="sektor-sum-row"><span>${label}</span><span class="mono">${fmt(t)} m</span></div>`;
+      }).join("");
+  }
+
   sektori.forEach((sektor, i)=>{
     const card = document.createElement("div");
     card.className = "sektor-card";
@@ -884,28 +922,30 @@ function renderSektori(){
       rmBtn.addEventListener("click", ()=>{ sektori.splice(i,1); renderSektori(); isDirty = true; updateSaveStatus(); });
       header.appendChild(rmBtn);
     }
-
     card.appendChild(header);
 
-    const subs = [
-      { key: "kabal10", label: "Kabal 2x10mm" },
-      { key: "kabal16", label: "Kabal 2x16mm" },
-      { key: "optika",  label: "Optika" }
-    ];
-    subs.forEach(sub=>{
+    keys.forEach(([key,label])=>{
       const lbl = document.createElement("div");
       lbl.className = "sektor-sub-label";
-      lbl.textContent = sub.label;
+      lbl.textContent = label;
       card.appendChild(lbl);
       card.appendChild(createGroup(
-        sektor[sub.key],
-        [{key:"modul", label:"Modul (npr. 4485)", type:"text"}, {key:"kolicina", label:"Količina", type:"number"}],
-        "+ Dodaj modul"
+        sektor[key],
+        [{key:"duzina", label:"Dužina (m)", type:"number"}, {key:"kolicina", label:"Količina (kom)", type:"number"}],
+        "+ Dodaj dužinu",
+        refreshTotals
       ));
+      const tot = document.createElement("div");
+      tot.className = "sektor-sum";
+      card.appendChild(tot);
+      sumEls.push({el:tot, list:sektor[key]});
     });
 
     container.appendChild(card);
   });
+
+  container.appendChild(grandEl);
+  refreshTotals();
 }
 
 $("add-sektor-btn").addEventListener("click", ()=>{
@@ -946,7 +986,8 @@ function loadFormFromRecord(){
   bindSimpleField("d-odspajanje", d, "odspajanje");
   mountGroup("d-jumperi", d.jumperi, [{key:"vrsta",label:"Vrsta",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
   mountGroup("d-dc-kabl", d.dcKabl, [{key:"vrsta",label:"Vrsta",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
-  mountGroup("d-osiguraci", d.osiguraci, [{key:"vrsta",label:"Vrsta",type:"text"},{key:"amperaza",label:"Amperaža",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
+  mountGroup("d-osiguraci", d.osiguraci, [{key:"vrsta",label:"Vrsta",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
+  mountGroup("d-bbu", d.bbu, [{key:"tip",label:"Tip",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
   mountGroup("d-custom", d.custom, [{key:"naziv",label:"Naziv stavke",type:"text"},{key:"vrednost",label:"Vrednost / količina",type:"text"}], "+ Dodaj novu stavku");
   $("d-napomene").value = d.napomene || "";
   $("d-napomene").disabled = !canEdit;
@@ -958,7 +999,7 @@ function loadFormFromRecord(){
   $("m-izmestanje").value = m.izmestanje || "";
   $("m-izmestanje").disabled = !canEdit;
   $("m-izmestanje").oninput = (e)=>{ m.izmestanje = e.target.value; isDirty = true; updateSaveStatus(); };
-  bindSimpleField("m-panel-antena", m, "panelAntena");
+  mountGroup("m-panel-antena", m.panelAntena, [{key:"vrsta",label:"Vrsta",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
   mountGroup("m-radio-modul", m.radioModul, [{key:"naziv",label:"Naziv",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
   mountGroup("m-air3255", m.air3255, [{key:"naziv",label:"Naziv",type:"text"},{key:"kolicina",label:"Količina",type:"number"}]);
 
@@ -1094,7 +1135,11 @@ $("filter-to").addEventListener("input", renderRecordList);
 function openRecord(id, data){
   const base = emptyRecord();
   // duboko spajanje da nedostajuća polja (npr. iz starijih zapisa) ne ruše formu
+  const legacyPA = data && data.montirano && data.montirano.panelAntena;
   record = deepMerge(base, data);
+  if(legacyPA && !Array.isArray(legacyPA)){
+    record.montirano.panelAntena = [{ vrsta: "", kolicina: String(legacyPA) }];
+  }
   if(!record.montirano.sektori || record.montirano.sektori.length === 0){
     record.montirano.sektori = [ emptySektor(1) ];
   }
@@ -1195,10 +1240,11 @@ function computeSektorTotals(sektori){
   (sektori||[]).forEach(s=>{
     ["kabal10","kabal16","optika"].forEach(key=>{
       (s[key]||[]).forEach(item=>{
-        const name = (item.modul||"").trim() || "—";
-        const qty = parseFloat(item.kolicina) || 0;
-        groups[key][name] = (groups[key][name]||0) + qty;
-        grand[key] += qty;
+        const len = String(item.duzina||"").trim() || "—";
+        const g = groups[key][len] || (groups[key][len] = {kom:0, m:0});
+        g.kom += parseFloat(item.kolicina) || 0;
+        g.m += lineTotal(item);
+        grand[key] += lineTotal(item);
       });
     });
   });
@@ -1212,8 +1258,8 @@ function sektorTotalsHtml(sektori){
   ["kabal10","kabal16","optika"].forEach(key=>{
     const entries = Object.entries(groups[key]);
     if(entries.length === 0) return;
-    const rows = entries.map(([name,sum])=>`<tr><td>${escapeHtml(name)}</td><td class="mono" style="width:60px;">${sum}</td></tr>`).join("");
-    out += `<div class="pv-sub">${labelMap[key]} — ukupno: <span class="mono">${grand[key]}</span></div><table class="pv-table"><tbody>${rows}</tbody></table>`;
+    const rows = entries.map(([len,g])=>`<tr><td>${escapeHtml(len)} m</td><td class="mono" style="width:70px;">${g.kom} kom</td><td class="mono" style="width:90px;">${fmt(g.m)} m</td></tr>`).join("");
+    out += `<div class="pv-sub pv-grand-sub">${labelMap[key]} — UKUPNO: <span class="pv-grand-val">${fmt(grand[key])} m</span></div><table class="pv-table"><tbody>${rows}</tbody></table>`;
   });
   if(!out) return "";
   return `<div class="pv-sektor pv-sektor-total"><h4>UKUPNO (svi sektori)</h4>${out}</div>`;
@@ -1224,14 +1270,15 @@ function buildPrintHtml(){
   const m = record.montirano;
   const inst = m.instalacioni;
 
-  const twoColRow = (a,b) => `<tr><td>${escapeHtml(a.naziv||a.vrsta||"")}</td><td class="mono" style="width:70px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`;
+  const twoColRow = (a,b) => `<tr><td>${escapeHtml(a.naziv||a.vrsta||a.tip||"")}</td><td class="mono" style="width:70px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`;
   const threeColRow = (a) => `<tr><td>${escapeHtml(a.vrsta||"")}</td><td style="width:70px;">${escapeHtml(a.amperaza||"")}</td><td class="mono" style="width:60px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`;
   const customRow = (a) => `<tr><td>${escapeHtml(a.naziv||"")}</td><td class="mono" style="width:110px;">${escapeHtml(a.vrednost||"")}</td></tr>`;
 
   const sektoriHtml = (m.sektori||[]).map(s=>{
+    const sekRow = (a)=>`<tr><td>${escapeHtml(String(a.duzina||""))} m</td><td class="mono" style="width:70px;">${escapeHtml(String(a.kolicina||""))} kom</td><td class="mono" style="width:90px;">${fmt(lineTotal(a))} m</td></tr>`;
     const subHtml = (list, label) => {
       if(!list || list.length === 0) return "";
-      return `<div class="pv-sub">${label}</div>` + rowsOrEmpty(list, a=>`<tr><td>${escapeHtml(a.modul||"")}</td><td class="mono" style="width:60px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`);
+      return `<div class="pv-sub">${label}</div>` + rowsOrEmpty(list, sekRow) + `<div class="pv-sum">Ukupno: ${fmt(sumList(list))} m</div>`;
     };
     const body = subHtml(s.kabal10, "Kabal 2x10mm") + subHtml(s.kabal16, "Kabal 2x16mm") + subHtml(s.optika, "Optika");
     if(!body) return "";
@@ -1277,15 +1324,16 @@ function buildPrintHtml(){
     ${pvSimple("8. Odspajanje mekih kablova / jumpera", d.odspajanje, "kom")}
     ${pvItem("9. Demontaža jumpera", d.jumperi, twoColRow)}
     ${pvItem("10. Demontaža DC kabla", d.dcKabl, twoColRow)}
-    ${pvItem("11. Osigurači (vrsta / amperaža / količina)", d.osiguraci, threeColRow)}
+    ${pvItem("11. Osigurači", d.osiguraci, twoColRow)}
+    ${pvItem("12. BaseBand (BBU)", d.bbu, twoColRow)}
     ${pvItem("Dodatne stavke", d.custom, customRow)}
-    ${pvNote("12. Napomene", d.napomene)}
+    ${pvNote("13. Napomene", d.napomene)}
 
     <div class="pv-section-title mont">Montirano</div>
     ${pvItem("1. Kabinet", m.kabinet, twoColRow)}
     ${pvItem("2. Baterije", m.baterije, (a)=>`<tr><td>${escapeHtml(a.tip||"")}</td><td class="mono" style="width:70px;">${escapeHtml(String(a.kolicina||""))}</td></tr>`)}
     ${pvNote("3. Izmeštanje iz starog kabineta", m.izmestanje)}
-    ${pvSimple("4. Panel antena", m.panelAntena, "kom")}
+    ${pvItem("4. Panel antena", m.panelAntena, twoColRow)}
     ${pvItem("5. Radio modul", m.radioModul, twoColRow)}
     ${pvItem("6. AIR3255", m.air3255, twoColRow)}
 
@@ -1368,6 +1416,7 @@ onAuthStateChanged(auth, async (user)=>{
     canEdit = userRole === "editor";
     $("login-screen").hidden = true;
     $("app").hidden = false;
+    updateAppbarH();
     $("user-email").textContent = user.email || "";
     $("role-badge").textContent = canEdit ? "Uređivanje" : "Samo pregled";
     $("role-badge").className = "role-badge" + (canEdit ? " editor" : "");
@@ -1378,6 +1427,13 @@ onAuthStateChanged(auth, async (user)=>{
     $("login-pass").value = "";
   }
 });
+
+/* Visina gornje trake (za sticky traku sa dugmadima u formi) */
+function updateAppbarH(){
+  const bar = document.querySelector("header.appbar");
+  if(bar && bar.offsetHeight) document.documentElement.style.setProperty("--appbar-h", bar.offsetHeight + "px");
+}
+window.addEventListener("resize", updateAppbarH);
 
 /* Upozori pri zatvaranju stranice ako ima nesačuvanih izmena */
 window.addEventListener("beforeunload", (e)=>{
